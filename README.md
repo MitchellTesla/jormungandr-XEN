@@ -1,16 +1,17 @@
 #  Jörmungandr-Æxperimental Full-Node 
-[![API Check](https://github.com/MitchellTesla/jormungandr-XEN/actions/workflows/api.yml/badge.svg)](https://github.com/MitchellTesla/jormungandr-XEN/actions/workflows/api.yml)
+[![API Check](https://github.com/MitchellTesla/Alfa-ROMio/actions/workflows/api.yml/badge.svg)](https://github.com/MitchellTesla/ALfa-ROMio/actions/workflows/api.yml)
 [![Python scripts linters](https://github.com/MitchellTesla/jormungandr-XEN/actions/workflows/python-scripts.yml/badge.svg)](https://github.com/MitchellTesla/jormungandr-XEN/actions/workflows/python-scripts.yml)
 
-Do NOT use!.....Experimental repo and source code release* (WIP)
+Do NOT Use!..... Alfa-ROMeo is an experimental implementation of Jörmungandr, actively being tested and developed * (WIP) work-in-progress
 
-Jörmungandr is a node implementation, written in rust, with the initial aim to support the Ouroboros type of consensus protocol.
+This experimental node implementation is written in rust, with the initial aim to support the Ouroboros type of consensus protocol.
 
-A node is a participant of a blockchain network, continuously making, sending, receiving, and validating blocks. Each node is responsible to make sure that all the rules of the protocol are followed.  
+This node is a participant of a blockchain network, continuously making, sending, receiving, and validating blocks. All nodes are responsible for making sure that all the rules of the protocol(s) are followed!!! 
 
 > Just because you call something a blockchain, that doesn't mean you aren't
-> subject to normal engineering laws...
-> 
+> subject to normal engineering laws or physics...
+
+
 User guide documentation available [https://input-output-hk.github.io/jormungandr/][docs]
 
 <p align="center">
@@ -19,9 +20,10 @@ User guide documentation available [https://input-output-hk.github.io/jormungand
 
 # Mythology
 
-Jörmungandr refers to the Midgard Serpent in Norse mythology. (The World Serpent) It is a hint to Ouroboros, the Ancient Egyptian serpent, who eat its own tail, as well as the IOHK paper on proof of stake.
+Jörmungandr refers to the Midgard Serpent in Norse mythology. It is a hint to Ouroboros, the Ancient Egyptian serpent,(The World Serpent) who ate it's own tail, as well as ALL THE LEVERAGE, and the IOHK paper on proof of stake (POS). ;)
 [docs]: https://input-output-hk.github.io/jormungandr
 
+## It is recommended that you use the original Jörmungandr source code, and NOT this specific implementation.
 
 ## Master current build status
 
@@ -80,6 +82,8 @@ https://github.com/input-output-hk/jormungandr/releases/latest
 git clone https://github.com/input-output-hk/jormungandr
 cd jormungandr
 git checkout tags/<latest release tag> #replace this with something like v1.2.3
+cargo build # skip this if you do not want to run the tests
+cargo test  # skip this if you do not want to run the tests
 cargo install --locked --path jormungandr # --features systemd # (on linux with systemd)
 cargo install --locked --path jcli
 ```

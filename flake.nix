@@ -1,33 +1,31 @@
 {
+  nixConfig.extra-substituters = [
+    "https://iog.cachix.org"
+    "https://hydra.iohk.io"
+  ];
+  nixConfig.extra-trusted-public-keys = [
+    "iog.cachix.org-1:nYO0M9xTk/s5t1Bs9asZ/Sww/1Kt/hRhkLP0Hhv/ctY="
+    "hydra.iohk.io:f/Ea+s+dFdN+3Y/G+FDgSq+a5NEWhJGzdjvKNGv0/EQ="
+  ];
+
   inputs.nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
+  inputs.flake-compat.url = "github:edolstra/flake-compat";
+  inputs.flake-compat.flake = false;
   inputs.flake-utils.url = "github:numtide/flake-utils";
-  inputs.gitignore.url = "github:hercules-ci/gitignore.nix";
-  inputs.gitignore.inputs.nixpkgs.follows = "nixpkgs";
   inputs.pre-commit-hooks.url = "github:cachix/pre-commit-hooks.nix";
   inputs.pre-commit-hooks.inputs.nixpkgs.follows = "nixpkgs";
   inputs.pre-commit-hooks.inputs.flake-utils.follows = "flake-utils";
   inputs.rust-overlay.url = "github:oxalica/rust-overlay";
   inputs.rust-overlay.inputs.flake-utils.follows = "flake-utils";
   inputs.rust-overlay.inputs.nixpkgs.follows = "nixpkgs";
-  # XXX: https://github.com/nix-community/naersk/pull/167
-  #inputs.naersk.url = "github:nix-community/naersk";
-  inputs.naersk.url = "github:yusdacra/naersk/feat/cargolock-git-deps";
+  inputs.naersk.url = "github:nix-community/naersk";
   inputs.naersk.inputs.nixpkgs.follows = "nixpkgs";
-
-  nixConfig.extra-substituters = [
-    "https://hydra.iohk.io"
-    "https://vit-ops.cachix.org"
-  ];
-  nixConfig.extra-trusted-public-keys = [
-    "hydra.iohk.io:f/Ea+s+dFdN+3Y/G+FDgSq+a5NEWhJGzdjvKNGv0/EQ="
-    "vit-ops.cachix.org-1:LY84nIKdW7g1cvhJ6LsupHmGtGcKAlUXo+l1KByoDho="
-  ];
 
   outputs = {
     self,
     nixpkgs,
+    flake-compat,
     flake-utils,
-    gitignore,
     pre-commit-hooks,
     rust-overlay,
     naersk,
@@ -47,8 +45,8 @@
           overlays = [(import rust-overlay)];
         };
 
-        rust = let
-          _rust = pkgs.rust-bin.stable.latest.default.override {
+        mkRust = {channel ? "stable"}: let
+          _rust = pkgs.rust-bin.${channel}.latest.default.override {
             extensions = [
               "rust-src"
               "rust-analysis"
@@ -74,17 +72,28 @@
             '';
           };
 
-        naersk-lib = naersk.lib."${system}".override {
-          cargo = rust;
-          rustc = rust;
+        rust-stable = mkRust {channel = "stable";};
+        rust-nightly = mkRust {channel = "nightly";};
+
+        naersk-lib-stable = naersk.lib."${system}".override {
+          cargo = rust-stable;
+          rustc = rust-stable;
         };
 
-        mkPackage = name: let
+        naersk-lib-nighlty = naersk.lib."${system}".override {
+          cargo = rust-nightly;
+          rustc = rust-nightly;
+        };
+
+        mkPackage = {
+          naersk-lib ? naersk-lib-stable,
+          name,
+        }: let
           pkgCargo = readTOML ./${name}/Cargo.toml;
           cargoOptions =
             [
               "--package"
-              name
+              "file://$PWD/\"${name}\""
             ]
             ++ (pkgs.lib.optionals (name == "jormungandr") [
               "--features"
@@ -92,7 +101,9 @@
             ]);
         in
           naersk-lib.buildPackage {
-            root = gitignore.lib.gitignoreSource self;
+            inherit (pkgCargo.package) name version;
+
+            root = self;
 
             cargoBuildOptions = x: x ++ cargoOptions;
             cargoTestOptions = x: x ++ cargoOptions;
@@ -117,7 +128,21 @@
             builtins.map
             (name: {
               inherit name;
-              value = mkPackage name;
+              value = mkPackage {inherit name;};
+            })
+            workspaceCargo.workspace.members
+          );
+
+        workspace-nightly =
+          builtins.listToAttrs
+          (
+            builtins.map
+            (name: {
+              name = "nightly-${name}";
+              value = mkPackage {
+                inherit name;
+                naersk-lib = naersk-lib-nighlty;
+              };
             })
             workspaceCargo.workspace.members
           );
@@ -211,7 +236,7 @@
                 tcpdump
                 tmux
                 tree
-                utillinux
+                util-linux
                 vim
                 yq
               ]);
@@ -225,24 +250,26 @@
             };
             rustfmt = {
               enable = true;
-              entry = pkgs.lib.mkForce "${rust}/bin/cargo-fmt fmt -- --check --color always";
+              entry = pkgs.lib.mkForce "${rust-nightly}/bin/cargo-fmt fmt -- --check --color always";
             };
           };
         };
 
         warnToUpdateNix = pkgs.lib.warn "Consider updating to Nix > 2.7 to remove this warning!";
       in rec {
-        packages = {
-          inherit (workspace) jormungandr jcli;
-          inherit jormungandr-entrypoint;
-          default = workspace.jormungandr;
-        };
+        packages =
+          workspace
+          // workspace-nightly
+          // {
+            inherit jormungandr-entrypoint pre-commit;
+            default = workspace.jormungandr;
+          };
 
         devShells.default = pkgs.mkShell {
           PROTOC = "${pkgs.protobuf}/bin/protoc";
           PROTOC_INCLUDE = "${pkgs.protobuf}/include";
           buildInputs =
-            [rust]
+            [rust-stable]
             ++ (with pkgs; [
               pkg-config
               openssl
